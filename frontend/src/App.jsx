@@ -3,21 +3,36 @@ import { Shield, Lock, AlertTriangle, CheckCircle, Smartphone, Server, FileCode,
 
 // --- Mock Scanner Logic ---
 const scanWebsite = async (url) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // Mock result - in a real app, this would come from a backend
-      resolve({
-        httpsEnabled: true,
-        tls13: false,
-        ecdhe: true,
-        aes256: true,
-        validCert: true,
-        hsts: false,
-        secureHeaders: false,
-        weakCiphers: true,
-      });
-    }, 2000);
-  });
+  try {
+    const response = await fetch('http://localhost:3000/api/scan', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ url }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Scan failed:", error);
+    // Return a failed state object rather than getting stuck
+    return {
+      httpsEnabled: false,
+      tls13: false,
+      ecdhe: false,
+      aes256: false,
+      validCert: false,
+      hsts: false,
+      secureHeaders: false,
+      weakCiphers: false,
+      error: true
+    };
+  }
 };
 
 const calculateScore = (data) => {
