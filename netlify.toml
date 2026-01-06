@@ -1,12 +1,11 @@
 [build]
-  base = "frontend"
-  publish = "dist"
-  command = "npm install && npm run build"
+  command = "cd frontend && npm install && npm run build"
+  publish = "frontend/dist"
 
 [functions]
-  directory = "../netlify/functions"
+  directory = "netlify/functions"
 
 [[redirects]]
-  from = "/api/scan"
-  to = "/.netlify/functions/scan"
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
   status = 200
