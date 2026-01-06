@@ -4,7 +4,7 @@ import { Shield, Lock, AlertTriangle, CheckCircle, Smartphone, Server, FileCode,
 // --- Mock Scanner Logic ---
 const scanWebsite = async (url) => {
   try {
-    const response = await fetch('http://localhost:3000/api/scan', {
+    const response = await fetch('/api/scan', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
