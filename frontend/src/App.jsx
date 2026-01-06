@@ -91,6 +91,83 @@ function Card({ children, className = '' }) {
   );
 }
 
+// --- Data & Helper Components ---
+
+const FINDINGS_CONFIG = [
+  {
+    key: 'httpsEnabled',
+    label: 'HTTPS Enabled',
+    good: "Secure connection established.",
+    bad: "Insecure connection (HTTP).",
+    suggestion: "Enable HTTPS by obtaining an SSL/TLS certificate (e.g., Let's Encrypt) and configuring a 301 redirect from HTTP to HTTPS. Consider using Google Cloud Load Balancing for managed SSL."
+  },
+  {
+    key: 'tls13',
+    label: 'TLS 1.3',
+    good: "Modern protocol version.",
+    bad: "Outdated TLS version detected.",
+    suggestion: "Update your web server configuration to support TLS 1.3 only or as the preferred protocol. Disable TLS 1.0 and 1.1. In Nginx, use `ssl_protocols TLSv1.2 TLSv1.3;`."
+  },
+  {
+    key: 'ecdhe',
+    label: 'ECDHE Key Exchange',
+    good: "Forward secrecy enabled.",
+    bad: "Missing forward secrecy.",
+    suggestion: "Enable Elliptic Curve Diffie-Hellman Exchange (ECDHE) suites. This ensures that past communications cannot be decrypted even if the private key is compromised in the future."
+  },
+  {
+    key: 'aes256',
+    label: 'AES-256 Encryption',
+    good: "Strong encryption standard.",
+    bad: "Weak or deprecated cipher preferences.",
+    suggestion: "Prioritize AES-256-GCM or ChaCha20-Poly1305. Avoid RC4, DES, and 3DES. Update your cipher suite string to prioritize high-security algorithms."
+  },
+  {
+    key: 'validCert',
+    label: 'Valid Certificate',
+    good: "Certificate is trusted.",
+    bad: "Certificate invalid or untrusted.",
+    suggestion: "Ensure your certificate is issued by a trusted CA, is not expired, and matches the domain name. Use automation tools like Certbot to handle renewals."
+  },
+  {
+    key: 'hsts',
+    label: 'HSTS Header',
+    good: "Strict transport security active.",
+    bad: "HSTS header missing.",
+    suggestion: "Add the `Strict-Transport-Security` header (e.g., `max-age=31536000; includeSubDomains`) to tell browsers to always connect via HTTPS."
+  },
+  {
+    key: 'secureHeaders',
+    label: 'Secure Headers',
+    good: "Security headers present.",
+    bad: "Missing Key Security Headers.",
+    suggestion: "Implement headers like `Content-Security-Policy`, `X-Frame-Options: DENY`, and `X-Content-Type-Options: nosniff` to prevent XSS and clickjacking."
+  },
+  {
+    key: 'weakCiphers',
+    label: 'No Weak Ciphers',
+    condition: (res) => !res.weakCiphers,
+    good: "No legacy ciphers detected.",
+    bad: "Weak/Legacy ciphers detected!",
+    suggestion: "Audit your SSL configuration. Remove references to RC4, MD5, DES, and other obsolete ciphers. They are vulnerable to attacks like POODLE and BEAST."
+  }
+];
+
+function FindingCard({ item, isPass }) {
+  return (
+    <Card className={`border-l-4 ${isPass ? 'border-l-green-500' : 'border-l-red-500'} hover:bg-slate-800/50 transition-colors`}>
+      <div className="flex justify-between items-start mb-2">
+        <h4 className="font-semibold text-slate-200">{item.label}</h4>
+        {isPass ? <Check className="w-5 h-5 text-green-400" /> : <X className="w-5 h-5 text-red-400" />}
+      </div>
+      <p className="text-sm text-slate-400 mb-3">
+        {isPass ? item.good : item.bad}
+      </p>
+
+    </Card>
+  );
+}
+
 // --- Main App Component ---
 
 function App() {
@@ -230,31 +307,43 @@ function App() {
             {/* Findings & Fixes */}
             <Section title={<><FileCode className="w-6 h-6 text-brand-purple" /> Scan Findings</>}>
               <div className="grid gap-4 md:grid-cols-2">
-                {[
-                  { key: 'httpsEnabled', label: 'HTTPS Enabled', good: "Secure connection established.", bad: "Enable HTTPS and redirect HTTP to HTTPS (HSTS). Use Google Cloud Load Balancing." },
-                  { key: 'tls13', label: 'TLS 1.3', good: "Modern protocol version.", bad: "Upgrade server stack to support TLS 1.3. Test with SSL Labs." },
-                  { key: 'ecdhe', label: 'ECDHE Key Exchange', good: "Forward secrecy enabled.", bad: "Enable ECDHE for forward secrecy." },
-                  { key: 'aes256', label: 'AES-256 Encryption', good: "Strong encryption standard.", bad: "Prefer AES-256-GCM or ChaCha20-Poly1305 over legacy ciphers." },
-                  { key: 'validCert', label: 'Valid Certificate', good: "Certificate is trusted.", bad: "Use trusted CA certificates and automate renewal." },
-                  { key: 'hsts', label: 'HSTS Header', good: "Strict transport security active.", bad: "Add Strict-Transport-Security header to enforce HTTPS." },
-                  { key: 'secureHeaders', label: 'Secure Headers', good: "Security headers present.", bad: "Add CSP, X-Frame-Options, X-Content-Type-Options." },
-                  { key: '!weakCiphers', label: 'No Weak Ciphers', condition: !scanResult.weakCiphers, good: "No legacy ciphers detected.", bad: "Disable legacy RSA key-exchange and obsolete ciphers (RC4, 3DES)." }
-                ].map((item, idx) => {
-                  const isPass = item.condition !== undefined ? item.condition : scanResult[item.key];
+                {FINDINGS_CONFIG.map((item, idx) => {
+                  const isPass = typeof item.condition === 'function' ? item.condition(scanResult) : scanResult[item.key];
                   return (
-                    <Card key={idx} className={`border-l-4 ${isPass ? 'border-l-green-500' : 'border-l-red-500'} hover:bg-slate-800/50 transition-colors`}>
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-semibold text-slate-200">{item.label}</h4>
-                        {isPass ? <Check className="w-5 h-5 text-green-400" /> : <X className="w-5 h-5 text-red-400" />}
-                      </div>
-                      <p className="text-sm text-slate-400">
-                        {isPass ? item.good : item.bad}
-                      </p>
-                    </Card>
+                    <FindingCard key={idx} item={item} isPass={isPass} />
                   );
                 })}
               </div>
             </Section>
+
+            {/* Security Recommendations - Only shown if there are issues */}
+            {FINDINGS_CONFIG.some(item => {
+              const res = typeof item.condition === 'function' ? item.condition(scanResult) : scanResult[item.key];
+              return !res;
+            }) && (
+                <Section title={<><Info className="w-6 h-6 text-brand-cyan" /> Security Recommendations</>}>
+                  <div className="space-y-4">
+                    {FINDINGS_CONFIG.map((item, idx) => {
+                      const isPass = typeof item.condition === 'function' ? item.condition(scanResult) : scanResult[item.key];
+                      if (isPass) return null;
+
+                      return (
+                        <Card key={idx} className="border-l-4 border-l-orange-400 bg-slate-900/80">
+                          <h4 className="font-bold text-slate-200 flex items-center gap-2 mb-2">
+                            <AlertTriangle className="w-4 h-4 text-orange-400" />
+                            Fix: {item.label}
+                          </h4>
+                          <p className="text-sm text-slate-300 mb-2">{item.bad}</p>
+                          <div className="p-3 bg-slate-950/50 rounded border border-slate-700/50 text-sm text-slate-400">
+                            <strong className="text-brand-cyan block mb-1">Action:</strong>
+                            {item.suggestion}
+                          </div>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </Section>
+              )}
 
             {/* Quantum Safe Advisor */}
             <Section title={<><Zap className="w-6 h-6 text-brand-cyan" /> Quantum-Safe Upgrade Path</>}>
