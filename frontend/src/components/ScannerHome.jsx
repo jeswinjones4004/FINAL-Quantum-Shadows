@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import PrintableCertificate from './PrintableCertificate';
 import ShareableBadges from './ShareableBadges';
+import QuantumThreatSimulator from './QuantumThreatSimulator';
 import { Shield, Lock, AlertTriangle, CheckCircle, Smartphone, Server, FileCode, ArrowRight, Activity, Zap, Info, Award, Check, X } from 'lucide-react';
 
 
@@ -462,7 +463,10 @@ function ScannerHome() {
                             </Card>
                         </Section>
 
-
+                        {/* Simulator Section */}
+                        <section className="mb-16">
+                            <QuantumThreatSimulator />
+                        </section>
 
                         {/* Live Analysis Console (Mock Preview) */}
                         <Section title={<><Activity className="w-6 h-6 text-orange-400" /> Live Threat Monitor</>}>
