@@ -124,6 +124,96 @@ app.post('/api/scan', async (req, res) => {
     }
 });
 
+// --- Live Monitor Endpoints ---
+const THREAT_TYPES = ['CRITICAL', 'WARN', 'INFO'];
+const THREAT_MESSAGES = [
+    "Harvest-now attack detected on Server-US-East-4. Payload analysis initiated.",
+    "Scanning TLS configuration for endpoint 192.168.1.105...",
+    "Weak cipher suite (RC4) detected on Legacy-Gateway-02.",
+    "Quantum-ready handshake initiated from 10.0.0.5 via Kyber-512.",
+    "Certificate expiry warning for subdomain api.test.com. Renew immediately.",
+    "Unusual traffic spike detected on port 443 (potential probing).",
+    "Post-Quantum transition check: FAILED for node-cluster-alpha."
+];
+
+app.get('/api/threats', (req, res) => {
+    // Generate 3-5 random recent threats
+    const count = 3 + Math.floor(Math.random() * 3);
+    const threats = Array.from({ length: count }).map((_, i) => {
+        const type = THREAT_TYPES[Math.floor(Math.random() * THREAT_TYPES.length)];
+        return {
+            id: Date.now() + i,
+            timestamp: new Date().toLocaleTimeString('en-US', { hour12: false }),
+            type: type,
+            message: THREAT_MESSAGES[Math.floor(Math.random() * THREAT_MESSAGES.length)]
+        };
+    });
+    res.json(threats);
+});
+
+app.get('/api/stats', (req, res) => {
+    // Return mock global stats that change slightly
+    res.json({
+        securedSites: 1240 + Math.floor(Math.random() * 25), // Mock live counter
+        threatsBlocked: "4.5M",
+        nistAdoption: 12, // 12%
+        legacyVuln: 68    // 68%
+    });
+});
+
+
+// --- Authentication & Persistence ---
+const bcrypt = require('bcryptjs');
+const Database = require('better-sqlite3');
+const path = require('path');
+
+// Initialize Database
+const dbPath = path.resolve(__dirname, 'kv.sqlite');
+const db = new Database(dbPath);
+
+// Create Users Table
+db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE,
+        password TEXT
+    )
+`);
+
+app.post('/api/auth/register', async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+
+    try {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const insert = db.prepare('INSERT INTO users (email, password) VALUES (?, ?)');
+        const info = insert.run(email, hashedPassword);
+        res.status(201).json({ success: true, userId: info.lastInsertRowid });
+    } catch (error) {
+        if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+            return res.status(400).json({ error: 'User already exists' });
+        }
+        res.status(500).json({ error: 'Registration failed' });
+    }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+
+    try {
+        const row = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+        if (!row) return res.status(400).json({ error: 'Invalid credentials' });
+
+        const isMatch = await bcrypt.compare(password, row.password);
+        if (!isMatch) return res.status(400).json({ error: 'Invalid credentials' });
+
+        res.json({ success: true, email: row.email });
+    } catch (error) {
+        res.status(500).json({ error: 'Login failed' });
+    }
+});
+
 const PORT = 3000;
 app.listen(PORT, () => {
     console.log(`Backend server running on http://localhost:${PORT}`);

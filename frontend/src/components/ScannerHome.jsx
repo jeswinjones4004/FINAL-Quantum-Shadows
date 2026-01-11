@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import PrintableCertificate from './PrintableCertificate';
 import ShareableBadges from './ShareableBadges';
 import { Shield, Lock, AlertTriangle, CheckCircle, Smartphone, Server, FileCode, ArrowRight, Activity, Zap, Info, Award, Check, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+
 
 // --- Mock Scanner Logic ---
 const scanWebsite = async (url) => {
@@ -176,7 +177,38 @@ function FindingCard({ item, isPass }) {
 function ScannerHome() {
     const [url, setUrl] = useState('');
     const [isScanning, setIsScanning] = useState(false);
-    const navigate = useNavigate();
+    const [liveThreats, setLiveThreats] = useState([]);
+    const [globalStats, setGlobalStats] = useState({
+        securedSites: 1240,
+        threatsBlocked: '4.5M',
+        nistAdoption: 12,
+        legacyVuln: 68
+    });
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const threatsRes = await fetch('/api/threats');
+                if (threatsRes.ok) {
+                    const data = await threatsRes.json();
+                    setLiveThreats(data);
+                }
+
+                const statsRes = await fetch('/api/stats');
+                if (statsRes.ok) {
+                    const data = await statsRes.json();
+                    setGlobalStats(data);
+                }
+            } catch (e) {
+                console.error("Failed to fetch live data", e);
+            }
+        };
+
+        fetchData();
+        const interval = setInterval(fetchData, 5000); // Poll every 5s
+        return () => clearInterval(interval);
+    }, []);
+
 
     // Initial Mock Data
     const [scanResult, setScanResult] = useState({
@@ -222,13 +254,14 @@ function ScannerHome() {
 
                 {/* Header / Hero */}
                 <div className="fixed top-6 right-6 z-40 flex gap-3">
-                    <button
-                        onClick={() => navigate('/login')}
-                        className="bg-brand-cyan hover:bg-cyan-400 text-black px-4 py-2 rounded-full flex items-center gap-2 transition-all shadow-lg text-sm font-bold group"
+
+                    <Link
+                        to="/login"
+                        className="bg-slate-800/80 backdrop-blur border border-slate-600 hover:border-blue-500 text-slate-300 hover:text-white px-4 py-2 rounded-full flex items-center gap-2 transition-all shadow-lg text-sm font-medium group"
                     >
-                        <Activity className="w-4 h-4" />
-                        <span>Live Monitor</span>
-                    </button>
+                        <Lock className="w-4 h-4 text-blue-500 group-hover:scale-110 transition-transform" />
+                        <span>Login</span>
+                    </Link>
 
                     <button
                         onClick={() => setShowBadge(true)}
@@ -429,83 +462,82 @@ function ScannerHome() {
                             </Card>
                         </Section>
 
+
+
+                        {/* Live Analysis Console (Mock Preview) */}
+                        <Section title={<><Activity className="w-6 h-6 text-orange-400" /> Live Threat Monitor</>}>
+                            <div className="grid lg:grid-cols-2 gap-8">
+                                <Card className="h-full">
+                                    <div className="flex items-center justify-between mb-4 border-b border-slate-700 pb-2">
+                                        <span className="text-sm font-semibold text-slate-200">Real-Time Threat Feed</span>
+                                        <span className="flex items-center gap-2 text-xs text-green-400">
+                                            <span className="relative flex h-2 w-2">
+                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                                            </span>
+                                            Live
+                                        </span>
+                                    </div>
+                                    <div className="space-y-4 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar text-xs font-mono text-slate-400">
+                                        {liveThreats.length > 0 ? liveThreats.map((threat) => (
+                                            <div key={threat.id} className="flex gap-3 items-start animate-fade-in">
+                                                <span className="text-slate-600 shrink-0">{threat.timestamp}</span>
+                                                <span className={`${threat.type === 'CRITICAL' ? 'text-red-400' : threat.type === 'WARN' ? 'text-orange-400' : 'text-blue-400'} font-bold w-16 shrink-0`}>
+                                                    {threat.type}
+                                                </span>
+                                                <span>{threat.message}</span>
+                                            </div>
+                                        )) : (
+                                            <div className="text-center py-4 text-slate-600">Connecting to threat feed...</div>
+                                        )}
+                                    </div>
+                                </Card>
+
+                                <div className="space-y-6">
+                                    <Card>
+                                        <h4 className="text-sm font-semibold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2">
+                                            <Server className="w-4 h-4 text-slate-500" />
+                                            Global PQC Readiness
+                                        </h4>
+                                        <div className="mb-4">
+                                            <div className="flex justify-between text-xs mb-1">
+                                                <span className="text-slate-300">NIST Algorithm Adoption</span>
+                                                <span className="text-brand-cyan font-bold">{globalStats.nistAdoption}%</span>
+                                            </div>
+                                            <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                                                <div className="h-full bg-brand-cyan rounded-full shadow-[0_0_10px_rgba(34,211,238,0.5)]" style={{ width: `${globalStats.nistAdoption}%` }}></div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div className="flex justify-between text-xs mb-1">
+                                                <span className="text-slate-300">Vulnerable Legacy Systems</span>
+                                                <span className="text-red-400 font-bold">{globalStats.legacyVuln}%</span>
+                                            </div>
+                                            <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                                                <div className="h-full bg-red-500 rounded-full shadow-[0_0_10px_rgba(239,68,68,0.5)]" style={{ width: `${globalStats.legacyVuln}%` }}></div>
+                                            </div>
+                                        </div>
+                                    </Card>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <Card className="text-center py-5 flex flex-col justify-center items-center group hover:bg-slate-800/80 transition-colors">
+                                            <CheckCircle className="w-8 h-8 text-green-400 mb-2 opacity-80 group-hover:scale-110 transition-transform" />
+                                            <div className="text-2xl font-black text-slate-100">{globalStats.securedSites.toLocaleString()}</div>
+                                            <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mt-1">Sites Secured</div>
+                                        </Card>
+                                        <Card className="text-center py-5 flex flex-col justify-center items-center group hover:bg-slate-800/80 transition-colors border-brand-purple/20">
+                                            <Shield className="w-8 h-8 text-brand-purple mb-2 opacity-80 group-hover:scale-110 transition-transform" />
+                                            <div className="text-2xl font-black text-brand-purple">{globalStats.threatsBlocked}</div>
+                                            <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mt-1">Threats Blocked</div>
+                                        </Card>
+                                    </div>
+                                </div>
+                            </div>
+                        </Section>
+
                     </div>
                 )}
 
-                {/* Live Analysis Console (Mock Preview) */}
-                <Section title={<><Activity className="w-6 h-6 text-orange-400" /> Live Threat Monitor</>}>
-                    <div className="grid lg:grid-cols-2 gap-8">
-                        <Card className="h-full">
-                            <div className="flex items-center justify-between mb-4 border-b border-slate-700 pb-2">
-                                <span className="text-sm font-semibold text-slate-200">Real-Time Threat Feed</span>
-                                <span className="flex items-center gap-2 text-xs text-green-400">
-                                    <span className="relative flex h-2 w-2">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                                    </span>
-                                    Live
-                                </span>
-                            </div>
-                            <div className="space-y-4 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar text-xs font-mono text-slate-400">
-                                {/* Mock items */}
-                                <div className="flex gap-3 items-start animate-fade-in">
-                                    <span className="text-slate-600 shrink-0">21:24:05</span>
-                                    <span className="text-red-400 font-bold w-16 shrink-0">CRITICAL</span>
-                                    <span>Harvest-now attack detected on Server-US-East-4. Payload analysis initiated.</span>
-                                </div>
-                                <div className="flex gap-3 items-start animate-fade-in delay-75">
-                                    <span className="text-slate-600 shrink-0">21:23:58</span>
-                                    <span className="text-blue-400 font-bold w-16 shrink-0">INFO</span>
-                                    <span>Scanning TLS configuration for endpoint 192.168.1.105...</span>
-                                </div>
-                                <div className="flex gap-3 items-start animate-fade-in delay-100">
-                                    <span className="text-slate-600 shrink-0">21:23:42</span>
-                                    <span className="text-orange-400 font-bold w-16 shrink-0">WARN</span>
-                                    <span>Weak cipher suite (RC4) detected on Legacy-Gateway-02.</span>
-                                </div>
-                            </div>
-                        </Card>
 
-                        <div className="space-y-6">
-                            <Card>
-                                <h4 className="text-sm font-semibold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2">
-                                    <Server className="w-4 h-4 text-slate-500" />
-                                    Global PQC Readiness
-                                </h4>
-                                <div className="mb-4">
-                                    <div className="flex justify-between text-xs mb-1">
-                                        <span className="text-slate-300">NIST Algorithm Adoption</span>
-                                        <span className="text-brand-cyan font-bold">12%</span>
-                                    </div>
-                                    <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                                        <div className="h-full bg-brand-cyan w-[12%] rounded-full shadow-[0_0_10px_rgba(34,211,238,0.5)]"></div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div className="flex justify-between text-xs mb-1">
-                                        <span className="text-slate-300">Vulnerable Legacy Systems</span>
-                                        <span className="text-red-400 font-bold">68%</span>
-                                    </div>
-                                    <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                                        <div className="h-full bg-red-500 w-[68%] rounded-full shadow-[0_0_10px_rgba(239,68,68,0.5)]"></div>
-                                    </div>
-                                </div>
-                            </Card>
-                            <div className="grid grid-cols-2 gap-4">
-                                <Card className="text-center py-5 flex flex-col justify-center items-center group hover:bg-slate-800/80 transition-colors">
-                                    <CheckCircle className="w-8 h-8 text-green-400 mb-2 opacity-80 group-hover:scale-110 transition-transform" />
-                                    <div className="text-2xl font-black text-slate-100">1,240</div>
-                                    <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mt-1">Sites Secured</div>
-                                </Card>
-                                <Card className="text-center py-5 flex flex-col justify-center items-center group hover:bg-slate-800/80 transition-colors border-brand-purple/20">
-                                    <Shield className="w-8 h-8 text-brand-purple mb-2 opacity-80 group-hover:scale-110 transition-transform" />
-                                    <div className="text-2xl font-black text-brand-purple">4.5M</div>
-                                    <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mt-1">Threats Blocked</div>
-                                </Card>
-                            </div>
-                        </div>
-                    </div>
-                </Section>
                 <section className="mb-20">
                     <h2 className="text-2xl font-bold mb-8 text-center text-slate-100">Why Quantum Matters</h2>
                     <div className="grid md:grid-cols-3 gap-6">

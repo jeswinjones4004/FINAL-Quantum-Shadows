@@ -5,14 +5,35 @@ import { Shield, Lock, ArrowRight } from 'lucide-react';
 const Login = ({ setIsAuthenticated }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [isLogin, setIsLogin] = useState(true);
+    const [error, setError] = useState('');
     const navigate = useNavigate();
 
-    const handleLogin = (e) => {
+    const handleAuth = async (e) => {
         e.preventDefault();
-        // Mock Authentication
-        if (email && password) {
-            setIsAuthenticated(true);
-            navigate('/live-monitoring');
+        setError('');
+
+        const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
+
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Authentication failed');
+            }
+
+            if (data.success) {
+                setIsAuthenticated(true);
+                navigate('/live-monitoring');
+            }
+        } catch (err) {
+            setError(err.message);
         }
     };
 
@@ -29,11 +50,17 @@ const Login = ({ setIsAuthenticated }) => {
                     <div className="inline-flex items-center justify-center p-3 mb-4 rounded-full bg-slate-800/50 border border-slate-700">
                         <Shield className="w-8 h-8 text-cyan-400" />
                     </div>
-                    <h2 className="text-3xl font-bold text-white mb-2">Welcome Back</h2>
+                    <h2 className="text-3xl font-bold text-white mb-2">{isLogin ? 'Welcome Back' : 'Access Request'}</h2>
                     <p className="text-slate-400">Access the Quantum Threat Monitor</p>
                 </div>
 
-                <form onSubmit={handleLogin} className="space-y-6">
+                {error && (
+                    <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded text-red-300 text-sm text-center">
+                        {error}
+                    </div>
+                )}
+
+                <form onSubmit={handleAuth} className="space-y-6">
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-2">Email Access ID</label>
                         <div className="relative">
@@ -72,9 +99,19 @@ const Login = ({ setIsAuthenticated }) => {
                         type="submit"
                         className="w-full py-3 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold rounded-lg shadow-lg shadow-cyan-500/20 transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2"
                     >
-                        Authenticate <ArrowRight className="w-5 h-5" />
+                        {isLogin ? 'Authenticate' : 'Register Access'} <ArrowRight className="w-5 h-5" />
                     </button>
                 </form>
+
+                <div className="mt-6 text-center text-sm text-slate-400">
+                    {isLogin ? "Need access credentials? " : "Already authorized? "}
+                    <button
+                        onClick={() => { setIsLogin(!isLogin); setError(''); }}
+                        className="text-cyan-400 hover:text-cyan-300 font-bold underline underline-offset-4"
+                    >
+                        {isLogin ? "Request Access" : "Login Here"}
+                    </button>
+                </div>
 
                 <div className="mt-6 text-center text-xs text-slate-500">
                     Authorized Personnel Only • Classical Encryption is Insufficient
